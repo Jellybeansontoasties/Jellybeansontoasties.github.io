@@ -10,6 +10,12 @@
   --text: #e0e0e0;
   --text-dim: #c0c0a0;
   --border: #3a401a;
+  /* Homelab page aliases (do not override above) */
+  --fg: var(--primary);
+  --accent: #d35400;
+  --surface: var(--bg-secondary);
+  --muted: var(--text-dim);
+  --code-bg: #0d0402;
 }
 
 * {
@@ -226,6 +232,293 @@ a:hover {
   text-decoration: underline;
 }
 
+/* ========== Homelab pages (merged; does not override hub styles above) ========== */
+
+/* Navigation bar */
+nav {
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 0;
+  margin-bottom: 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+nav a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 400;
+  transition: color 0.2s ease;
+}
+
+nav a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* Hero (about / lab pages) */
+.hero {
+  margin: 3rem 0;
+  padding: 2rem 0;
+}
+
+.hero h1 {
+  color: var(--primary);
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.05em;
+}
+
+.hero .subtitle {
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  margin-top: 0.5rem;
+}
+
+/* Skills / tools cards */
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.skill-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  text-align: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.skill-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 12px rgba(255, 140, 0, 0.15);
+}
+
+.skill-card h3 {
+  color: var(--primary);
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Writeup cards and sections */
+.writeup-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.writeup-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.writeup-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 12px rgba(255, 140, 0, 0.15);
+}
+
+.writeup-card h3 {
+  color: var(--primary);
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.writeup-card a {
+  display: inline-block;
+  margin-top: 1rem;
+  color: var(--primary);
+  font-weight: 400;
+}
+
+/* Code and pre (writeups / lab) */
+code {
+  background-color: var(--code-bg);
+  color: var(--primary);
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+
+pre {
+  background-color: var(--code-bg);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+pre code {
+  background-color: transparent;
+  padding: 0;
+  color: var(--text-dim);
+}
+
+/* Tables (lab-setup) */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  border: 1px solid var(--border);
+  background-color: var(--bg-secondary);
+}
+
+th {
+  background-color: var(--code-bg);
+  color: var(--primary);
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+
+td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+tr:hover {
+  background-color: rgba(255, 140, 0, 0.05);
+}
+
+/* Network diagram (lab-setup) */
+.network-diagram {
+  margin: 2rem 0;
+  padding: 0;
+}
+
+.network-diagram pre {
+  white-space: pre;
+  font-size: 0.85rem;
+}
+
+/* Writeup article sections */
+.writeup-section {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border-left: 3px solid var(--border);
+  background-color: rgba(58, 64, 26, 0.15);
+}
+
+.writeup-section h3 {
+  color: var(--primary);
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.writeup-section ul {
+  margin: 1rem 0;
+  padding-left: 2rem;
+}
+
+.writeup-section li {
+  margin: 0.5rem 0;
+}
+
+.screenshot-placeholder {
+  min-height: 200px;
+  border: 2px dashed var(--border);
+  background-color: var(--code-bg);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  margin: 1.5rem 0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9rem;
+}
+
+.writeup-nav {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.writeup-nav a {
+  color: var(--primary);
+}
+
+/* Timeline (about page) */
+.timeline-container {
+  margin: 2rem 0;
+}
+
+.timeline-item {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.timeline-item:hover {
+  border-left-color: var(--accent);
+  box-shadow: 0 0 12px rgba(255, 140, 0, 0.15);
+}
+
+.timeline-item h3 {
+  color: var(--primary);
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.timeline-item p {
+  color: var(--text);
+  margin: 0;
+}
+
+/* GitHub link block (about page) */
+.github-link {
+  margin: 3rem 0;
+}
+
+.github-button {
+  display: inline-block;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--primary);
+  padding: 0.75rem 1.5rem;
+  margin-top: 1rem;
+  color: var(--primary);
+  font-weight: 400;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.github-button:hover {
+  background-color: rgba(255, 140, 0, 0.1);
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   body {
@@ -246,5 +539,27 @@ a:hover {
 
   .projects {
     gap: 1.25rem;
+  }
+
+  nav ul {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .skills-grid,
+  .writeup-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-item {
+    padding: 1rem;
+  }
+
+  table {
+    font-size: 0.9rem;
+  }
+
+  th, td {
+    padding: 0.75rem 0.5rem;
   }
 }

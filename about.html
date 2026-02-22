@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="About jellybeansontoasties: cybersecurity enthusiast, home lab builder, and security researcher documenting offensive security exercises.">
+    <title>About | jellybeansontoasties</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="lab-setup.html">Lab Setup</a></li>
+            <li><a href="writeups/writeup-01.html">Writeups</a></li>
+            <li><a href="https://github.com/Jellybeansontoasties">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <div class="hero">
+            <h1>About</h1>
+            <h2>jellybeansontoasties</h2>
+            <p class="subtitle">Cybersecurity enthusiast | Home lab builder | Security researcher</p>
+        </div>
+
+        <section class="about">
+            <h2>Profile</h2>
+            <p>I'm a cybersecurity enthusiast passionate about offensive security, threat detection, and building isolated home lab environments for hands-on learning. This portfolio documents my journey building a 3-VM cybersecurity lab on Arch Linux using KVM/QEMU virtualization.</p>
+            <p>My lab focuses on practical penetration testing exercises, SIEM detection and alerting, and documenting attack methodologies from both offensive and defensive perspectives. Each writeup includes attacker techniques alongside blue team takeaways, demonstrating how security monitoring can detect and respond to threats.</p>
+            <p>When I'm not breaking things in my isolated lab, I'm exploring SIEM configuration, learning about vulnerability assessment, and contributing to open-source security tools. This site serves as both a learning journal and a portfolio of my practical security research.</p>
+        </section>
+
+        <section class="timeline">
+            <h2>Lab Build Timeline</h2>
+            <div class="timeline-container">
+                <div class="timeline-item">
+                    <h3>KVM/QEMU Setup</h3>
+                    <p>Configured Arch Linux host with KVM/QEMU virtualization. Set up libvirt and virsh for VM management. Created isolated virtual bridge network (virbr1) with subnet 192.168.100.0/24 to ensure complete isolation from production networks.</p>
+                </div>
+                <div class="timeline-item">
+                    <h3>VM Provisioning</h3>
+                    <p>Deployed three virtual machines: Kali Linux (attacker platform), Metasploitable 2 (intentionally vulnerable victim), and Ubuntu Server 22.04 (for SIEM deployment). Configured networking, allocated resources (RAM, vCPUs), and verified connectivity between VMs.</p>
+                </div>
+                <div class="timeline-item">
+                    <h3>Wazuh SIEM Deployment</h3>
+                    <p>Installed and configured Wazuh SIEM on Ubuntu Server VM. Set up agents on all VMs for log collection. Configured rules for detecting network scans, authentication failures, file integrity changes, and privilege escalation events. Verified alert generation and dashboard visibility.</p>
+                </div>
+                <div class="timeline-item">
+                    <h3>Attack Scenarios</h3>
+                    <p>Executed and documented multiple attack scenarios: network reconnaissance with nmap, SSH brute force with Hydra, reverse shell payload delivery with msfvenom, and privilege escalation techniques. Each scenario includes attacker methodology and corresponding SIEM detection rules.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="skills">
+            <h2>Tools & Technologies</h2>
+            <div class="skills-grid">
+                <div class="skill-card">
+                    <h3>Kali Linux</h3>
+                    <p>Penetration testing platform with comprehensive security tools</p>
+                </div>
+                <div class="skill-card">
+                    <h3>Wazuh</h3>
+                    <p>Open-source SIEM and XDR platform for threat detection</p>
+                </div>
+                <div class="skill-card">
+                    <h3>Metasploit</h3>
+                    <p>Exploitation framework for security testing and research</p>
+                </div>
+                <div class="skill-card">
+                    <h3>nmap</h3>
+                    <p>Network scanning and service enumeration tool</p>
+                </div>
+                <div class="skill-card">
+                    <h3>QEMU/KVM</h3>
+                    <p>Type-1 hypervisor for Linux virtualization</p>
+                </div>
+                <div class="skill-card">
+                    <h3>Arch Linux</h3>
+                    <p>Lightweight, rolling-release Linux distribution</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="github-link">
+            <h2>GitHub Repository</h2>
+            <p>View the source code, lab configuration scripts, and additional documentation:</p>
+            <p><a href="https://github.com/Jellybeansontoasties" class="github-button">GitHub Profile →</a></p>
+        </section>
+    </main>
+
+    <footer>
+        <p><a href="https://github.com/Jellybeansontoasties">GitHub</a> | Built on Arch Linux</p>
+    </footer>
+</body>
+</html>

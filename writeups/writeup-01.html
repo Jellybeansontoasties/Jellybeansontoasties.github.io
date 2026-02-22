@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Network scanning writeup: nmap reconnaissance against Metasploitable 2, Wazuh Rule 40101 detection, and defender takeaways.">
+    <title>Network Scanning with nmap | jellybeansontoasties Home Lab</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="../index.html">Home</a></li>
+            <li><a href="../about.html">About</a></li>
+            <li><a href="../lab-setup.html">Lab Setup</a></li>
+            <li><a href="writeup-01.html">Writeups</a></li>
+            <li><a href="https://github.com/Jellybeansontoasties">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <h1>Network Scanning with nmap</h1>
+        <p class="tagline">Reconnaissance scan against Metasploitable 2 (192.168.100.20) from Kali (192.168.100.10)</p>
+
+        <div class="writeup-section">
+            <h3>Objective</h3>
+            <p>Perform reconnaissance against the victim host to identify open ports, running services, and operating system information. The goal is to build a map of attack surface before attempting exploitation.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Tools used</h3>
+            <p>nmap</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Command used</h3>
+            <pre><code>nmap -sV -sC -O 192.168.100.20 -oN scan_results.txt</code></pre>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Expected output</h3>
+            <div class="screenshot-placeholder">Screenshot: nmap scan output (ports, versions, OS guess)</div>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Findings</h3>
+            <p>Open ports and services discovered (placeholder): multiple services including FTP, SSH, Telnet, HTTP, Samba, and others. Version detection and default scripts reveal software versions and potential misconfigurations. OS detection suggests the target is Linux. These findings inform which attack vectors to try next.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Wazuh Alert</h3>
+            <p><strong>Rule 40101</strong> — Network scan detected. The SIEM detected the reconnaissance activity from the Kali host (192.168.100.10) targeting the victim. This rule fires on port-scanning behavior and helps blue teams identify pre-attack enumeration.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Defender Takeaway</h3>
+            <p>Treat scan detection as a high-priority signal: reconnaissance often precedes exploitation. Correlate with other events (e.g., follow-up connection attempts). Reduce exposure by disabling unnecessary services and keeping only required ports open. Use network segmentation so critical assets are not in the same segment as internet-facing or lab systems.</p>
+        </div>
+
+        <nav class="writeup-nav">
+            <span></span>
+            <a href="writeup-02.html">Next: SSH Brute Force with Hydra →</a>
+        </nav>
+    </main>
+
+    <footer>
+        <p><a href="https://github.com/Jellybeansontoasties">GitHub</a> | Built on Arch Linux</p>
+    </footer>
+</body>
+</html>

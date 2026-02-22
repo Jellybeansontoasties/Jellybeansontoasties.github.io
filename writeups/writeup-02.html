@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SSH brute force writeup with Hydra against Metasploitable 2, Wazuh Rules 5710/5716, and defender takeaways.">
+    <title>SSH Brute Force with Hydra | jellybeansontoasties Home Lab</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="../index.html">Home</a></li>
+            <li><a href="../about.html">About</a></li>
+            <li><a href="../lab-setup.html">Lab Setup</a></li>
+            <li><a href="writeup-01.html">Writeups</a></li>
+            <li><a href="https://github.com/Jellybeansontoasties">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <h1>SSH Brute Force with Hydra</h1>
+        <p class="tagline">Credential brute force attack against Metasploitable 2 SSH service</p>
+
+        <div class="writeup-section">
+            <h3>Objective</h3>
+            <p>Attempt to gain SSH access to the victim host by brute forcing credentials using a known username (e.g. msfadmin) and a wordlist. This demonstrates the risk of weak or default credentials and the value of monitoring authentication failures.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Tools used</h3>
+            <p>Hydra</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Command used</h3>
+            <pre><code>hydra -l msfadmin -P /usr/share/wordlists/rockyou.txt ssh://192.168.100.20</code></pre>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Expected output</h3>
+            <div class="screenshot-placeholder">Screenshot: Hydra run showing credentials discovered and number of attempts</div>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Findings</h3>
+            <p>Credentials discovered (placeholder): after a number of attempts, Hydra identified a valid password for the msfadmin account. This grants full shell access to the victim, demonstrating how default or weak passwords enable initial access. Count of attempts and time-to-crack can be documented here.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Wazuh Alert</h3>
+            <p><strong>Rules 5710 / 5716</strong> — Multiple SSH authentication failure alerts. The SIEM detected repeated failed SSH login attempts from the Kali host to the victim, consistent with brute force activity. These rules help blue teams identify credential stuffing and brute force attacks in progress.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Defender Takeaway</h3>
+            <p>Implement account lockout policies and fail2ban (or equivalent) to throttle or block IPs after repeated failures. Monitor auth.log (and forward to SIEM) for SSH failures; correlate by source IP and username. Prefer key-based authentication and disable password auth where possible. Remove or change default credentials and enforce strong password policies.</p>
+        </div>
+
+        <nav class="writeup-nav">
+            <a href="writeup-01.html">← Previous: Network Scanning with nmap</a>
+            <a href="writeup-03.html">Next: Reverse Shell Payload with msfvenom →</a>
+        </nav>
+    </main>
+
+    <footer>
+        <p><a href="https://github.com/Jellybeansontoasties">GitHub</a> | Built on Arch Linux</p>
+    </footer>
+</body>
+</html>
