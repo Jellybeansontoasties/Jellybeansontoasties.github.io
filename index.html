@@ -18,10 +18,10 @@
         </ul>
     </nav>
 
-    <header>
-        <h1>jellybeansontoasties</h1>
-        <p class="tagline">student. exploring cybersecurity & AI.</p>
-        <p class="subtext">Arch Linux | Hyprland | HP Victus</p>
+    <header class="hero-typewriter">
+        <h1><span id="line1"></span><span class="typewriter-cursor" id="typewriter-cursor">█</span></h1>
+        <p class="tagline"><span id="line2"></span></p>
+        <p class="subtext"><span id="line3"></span></p>
     </header>
 
     <main>
@@ -71,5 +71,40 @@
     <footer>
         <p><a href="https://github.com/Jellybeansontoasties" target="_blank" rel="noopener noreferrer">GitHub</a> | built on arch btw</p>
     </footer>
+
+    <script>
+(function() {
+  const lines = [
+    'jellybeansontoasties',
+    'student. exploring cybersecurity & AI.',
+    'Arch Linux | Hyprland | HP Victus'
+  ];
+  const lineEls = [document.getElementById('line1'), document.getElementById('line2'), document.getElementById('line3')];
+  const cursor = document.getElementById('typewriter-cursor');
+  const charDelay = 55;
+  const linePause = 750;
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function typeLine(index) {
+    const text = lines[index];
+    const el = lineEls[index];
+    const parent = el.parentNode;
+    parent.appendChild(cursor);
+    cursor.style.visibility = 'visible';
+
+    for (let i = 0; i <= text.length; i++) {
+      el.textContent = text.slice(0, i);
+      await sleep(charDelay);
+    }
+    await sleep(linePause);
+  }
+
+  async function run() {
+    for (let i = 0; i < 3; i++) await typeLine(i);
+  }
+  run();
+})();
+    </script>
 </body>
 </html>

@@ -83,6 +83,17 @@ h1 {
   margin-left: 0.2em;
 }
 
+/* Typewriter hero: hide static cursor, use JS-driven cursor */
+.hero-typewriter .tagline::after {
+  display: none;
+}
+
+.typewriter-cursor {
+  color: var(--primary);
+  animation: blink 1s infinite;
+  margin-left: 0.05em;
+}
+
 @keyframes blink {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
