@@ -18,6 +18,11 @@
         </ul>
     </nav>
 
+    <header class="hero-typewriter">
+        <h1><span id="line1"></span><span class="typewriter-cursor" id="typewriter-cursor">█</span></h1>
+        <p class="tagline"><span id="line2"></span></p>
+    </header>
+
     <main>
         <div class="hero">
             <h1>About</h1>
@@ -99,8 +104,45 @@
         </section>
     </main>
 
-    <footer>
-        <p><a href="https://github.com/Jellybeansontoasties">GitHub</a> | Built on Arch Linux</p>
+    <footer class="site-footer">
+      <p>
+        <a href="https://github.com/jellybeansontoasties" target="_blank">GitHub</a>
+        &nbsp;|&nbsp;
+        built on arch btw
+      </p>
     </footer>
+
+    <script>
+(function() {
+  const lines = [
+    'jellybeansontoasties',
+    'Cybersecurity enthusiast | Home lab builder | Security researcher'
+  ];
+  const line1El = document.getElementById('line1');
+  const line2El = document.getElementById('line2');
+  const cursor = document.getElementById('typewriter-cursor');
+  const charDelay = 30;
+  const linePause = 750;
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function typeLine(text, el) {
+    const parent = el.parentNode;
+    parent.appendChild(cursor);
+    cursor.style.visibility = 'visible';
+
+    for (let i = 0; i <= text.length; i++) {
+      el.textContent = text.slice(0, i);
+      await sleep(charDelay);
+    }
+    await sleep(linePause);
+  }
+
+  (async function run() {
+    await typeLine(lines[0], line1El);
+    await typeLine(lines[1], line2El);
+  })();
+})();
+    </script>
 </body>
 </html>

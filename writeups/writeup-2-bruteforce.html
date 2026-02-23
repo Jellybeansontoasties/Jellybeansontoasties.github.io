@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SOC incident report documenting credential access via SSH brute force against Metasploitable 2 using Hydra in a Wazuh-monitored home lab.">
+    <title>Credential Access via SSH Brute Force | jellybeansontoasties Home Lab</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="../index.html">Home</a></li>
+            <li><a href="../about.html">About</a></li>
+            <li><a href="../lab-setup.html">Lab Setup</a></li>
+            <li><a href="writeup-1-reconnaissance.html">Incident Reports</a></li>
+            <li><a href="https://github.com/Jellybeansontoasties">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <header class="hero-typewriter">
+        <h1><span id="line1"></span><span class="typewriter-cursor" id="typewriter-cursor">█</span></h1>
+        <p class="tagline"><span id="line2"></span></p>
+    </header>
+
+    <main>
+        <h1>Credential Access via SSH Brute Force</h1>
+        <p class="tagline">Incident response report — Hydra-driven SSH brute force from Kali (192.168.100.10) to Metasploitable 2 (192.168.100.20) detected by Wazuh.</p>
+
+        <div class="writeup-section">
+            <h3>Environment</h3>
+            <ul>
+                <li><strong>Attacker:</strong> Kali Linux, 192.168.100.10</li>
+                <li><strong>Victim:</strong> Metasploitable 2, 192.168.100.20</li>
+                <li><strong>SIEM:</strong> Wazuh 4.7.5 (Docker), 192.168.100.50</li>
+                <li><strong>Network:</strong> Isolated KVM bridge <code>virbr1</code>, 192.168.100.0/24</li>
+                <li><strong>Host:</strong> Arch Linux, i7-13700HX, 15GB RAM, RTX 4060</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Incident Metadata</h3>
+            <ul>
+                <li><strong>Incident Title:</strong> Credential Access via SSH Brute Force</li>
+                <li><strong>Date:</strong> February 22, 2026</li>
+                <li><strong>Severity:</strong> High</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Detection Method</h3>
+            <ul>
+                <li>Wazuh rule <strong>5720</strong> triggered for SSH brute force pattern from a single source IP.</li>
+                <li><strong>847</strong> failed authentication attempts from <strong>192.168.100.10</strong> recorded within 14 seconds.</li>
+                <li>Rule <strong>5710</strong> fired repeatedly on login attempts using non-existent or incorrect usernames.</li>
+                <li>Overall pattern matched a high-speed, automated credential stuffing tool rather than interactive user error.</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Incident Timeline</h3>
+            <ul>
+                <li><strong>10:05</strong> — Hydra launched from Kali targeting SSH on 192.168.100.20.</li>
+                <li><strong>10:05</strong> — Hydra begins iterating the <code>rockyou.txt</code> wordlist with four parallel threads.</li>
+                <li><strong>10:05–10:05:14</strong> — 847 SSH login attempts generated; all initially fail.</li>
+                <li><strong>10:05:14</strong> — Valid credentials recovered: <code>msfadmin / msfadmin</code>.</li>
+                <li><strong>10:05:15</strong> — Wazuh rule 5720 fires; high-severity brute force alert (Level 10) created.</li>
+                <li><strong>10:06</strong> — Attacker successfully authenticates to the target via SSH using the recovered credentials.</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Command Used</h3>
+            <pre><code>hydra -l msfadmin -P /usr/share/wordlists/rockyou.txt ssh://192.168.100.20 -t 4 -V -o hydra_results.txt</code></pre>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Hydra Flags Explained</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Flag</th>
+                        <th>Function</th>
+                        <th>Attacker Rationale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>-l msfadmin</code></td>
+                        <td>Sets a single known username for the attack.</td>
+                        <td>Focuses the brute force on a likely valid account, reducing noise and time-to-success.</td>
+                    </tr>
+                    <tr>
+                        <td><code>-P /usr/share/wordlists/rockyou.txt</code></td>
+                        <td>Specifies the password wordlist to use.</td>
+                        <td>Leverages the widely used <code>rockyou.txt</code> list of ~14M real-world passwords sourced from breaches.</td>
+                    </tr>
+                    <tr>
+                        <td><code>ssh://192.168.100.20</code></td>
+                        <td>Targets the SSH service on the victim host.</td>
+                        <td>Attempts to gain remote shell access via a standard administrative protocol.</td>
+                    </tr>
+                    <tr>
+                        <td><code>-t 4</code></td>
+                        <td>Runs four parallel tasks (threads) during the attack.</td>
+                        <td>Increases throughput and reduces total attack duration while remaining stable for the target.</td>
+                    </tr>
+                    <tr>
+                        <td><code>-V</code></td>
+                        <td>Enables verbose output for every attempt.</td>
+                        <td>Provides visibility into which credentials succeed and supports later analysis.</td>
+                    </tr>
+                    <tr>
+                        <td><code>-o hydra_results.txt</code></td>
+                        <td>Writes successful login results to a file.</td>
+                        <td>Preserves evidence of valid credentials for reuse and reporting.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Credentials Recovered</h3>
+            <p>The brute force attack recovered the following credential pair:</p>
+            <ul>
+                <li><strong>Username:</strong> <code>msfadmin</code></li>
+                <li><strong>Password:</strong> <code>msfadmin</code> (default credential; username equals password)</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>MITRE ATT&amp;CK Mapping</h3>
+            <ul>
+                <li><strong>Tactic:</strong> TA0006 Credential Access</li>
+                <li><strong>Technique:</strong> T1110.001 Brute Force — Password Guessing</li>
+                <li><strong>Tool:</strong> Hydra</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Analysis</h3>
+            <p>The target host had no account lockout policy, no multi-factor authentication, and retained default credentials that were never rotated. The <code>rockyou.txt</code> wordlist contains tens of millions of passwords taken from historical data breaches; the valid <code>msfadmin</code> password appeared near the top of the list, and in this exercise would have been found within the first few attempts. The simulated run stipulated 847 failed attempts over 14 seconds before a successful login, but in real-world conditions default or common passwords are often identified far earlier. The combination of static credentials, lack of lockout, and the use of a well-known breached password list makes this attack both trivial and highly repeatable.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Impact</h3>
+            <p>The attacker obtained full SSH access to the target as a valid user account. This level of access enables interactive shell commands, deployment of additional tooling, and pivoting to other internal systems. With persistent SSH credentials, the attacker can maintain long-term presence, escalate privileges locally, and stage subsequent attacks such as lateral movement, data collection, and credential dumping, all while blending into normal administrative traffic.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Mitigation &amp; Recommendations</h3>
+            <ul>
+                <li>Enforce account lockout after a small number of failed login attempts (for example, five contiguous failures).</li>
+                <li>Deploy <code>fail2ban</code> or an equivalent mechanism to automatically block IP addresses that exceed defined authentication failure thresholds.</li>
+                <li>Prohibit default and dictionary-based passwords by policy and through technical enforcement (password quality modules).</li>
+                <li>Require multi-factor authentication (MFA) for all remote access services, particularly SSH and VPN.</li>
+                <li>Configure Wazuh (or any SIEM) to alert on any single IP that generates more than ten authentication failures per minute.</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Lessons Learned</h3>
+            <p>Credential-based attacks remain one of the most reliable paths to compromise because they target human weaknesses rather than software flaws. Even in tightly controlled lab scenarios, default credentials and weak password policies produce rapid, high-impact successes for attackers. Defenders must pair strong authentication controls with effective monitoring of authentication patterns to reliably detect and disrupt brute force activity before valid credentials are obtained.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Appendix</h3>
+            <p>Representative screenshots should be captured to support training and post-incident review.</p>
+            <!-- SCREENSHOT: Hydra terminal output showing brute force attempts and successful login -->
+            <!-- SCREENSHOT: Wazuh rule 5720 alert details and event timeline -->
+        </div>
+
+        <nav class="writeup-nav">
+            <a href="writeup-1-reconnaissance.html">← Previous: Reconnaissance via Network Port Scan</a>
+            <a href="writeup-3-exploitation.html">Next: Initial Access via Java RMI Deserialization Exploit →</a>
+        </nav>
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        <a href="https://github.com/jellybeansontoasties" target="_blank">GitHub</a>
+        &nbsp;|&nbsp;
+        built on arch btw
+      </p>
+    </footer>
+
+    <script>
+(function() {
+  const lines = [
+    'Incident Report #2',
+    'Hydra Credential Brute Force'
+  ];
+  const line1El = document.getElementById('line1');
+  const line2El = document.getElementById('line2');
+  const cursor = document.getElementById('typewriter-cursor');
+  const charDelay = 30;
+  const linePause = 750;
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function typeLine(text, el) {
+    const parent = el.parentNode;
+    parent.appendChild(cursor);
+    cursor.style.visibility = 'visible';
+
+    for (let i = 0; i <= text.length; i++) {
+      el.textContent = text.slice(0, i);
+      await sleep(charDelay);
+    }
+    await sleep(linePause);
+  }
+
+  (async function run() {
+    await typeLine(lines[0], line1El);
+    await typeLine(lines[1], line2El);
+  })();
+})();
+    </script>
+</body>
+</html>
+

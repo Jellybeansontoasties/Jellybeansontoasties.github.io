@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SOC incident report documenting reconnaissance via nmap network port scan against Metasploitable 2 in an isolated Kali–Wazuh home lab.">
+    <title>Reconnaissance via Network Port Scan | jellybeansontoasties Home Lab</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="../index.html">Home</a></li>
+            <li><a href="../about.html">About</a></li>
+            <li><a href="../lab-setup.html">Lab Setup</a></li>
+            <li><a href="writeup-1-reconnaissance.html">Incident Reports</a></li>
+            <li><a href="https://github.com/Jellybeansontoasties">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <header class="hero-typewriter">
+        <h1><span id="line1"></span><span class="typewriter-cursor" id="typewriter-cursor">█</span></h1>
+        <p class="tagline"><span id="line2"></span></p>
+    </header>
+
+    <main>
+        <h1>Reconnaissance via Network Port Scan</h1>
+        <p class="tagline">Incident response report — Kali (192.168.100.10) scanning Metasploitable 2 (192.168.100.20) with nmap in an isolated Wazuh-instrumented lab.</p>
+
+        <div class="writeup-section">
+            <h3>Environment</h3>
+            <ul>
+                <li><strong>Attacker:</strong> Kali Linux, 192.168.100.10</li>
+                <li><strong>Victim:</strong> Metasploitable 2, 192.168.100.20</li>
+                <li><strong>SIEM:</strong> Wazuh 4.7.5 (Docker), 192.168.100.50</li>
+                <li><strong>Network:</strong> Isolated KVM bridge <code>virbr1</code>, 192.168.100.0/24</li>
+                <li><strong>Host:</strong> Arch Linux, i7-13700HX, 15GB RAM, RTX 4060</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Incident Metadata</h3>
+            <ul>
+                <li><strong>Incident Title:</strong> Reconnaissance via Network Port Scan</li>
+                <li><strong>Date:</strong> February 22, 2026 — Home Lab Environment</li>
+                <li><strong>Severity:</strong> Low (precursor to attack chain)</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Detection Method</h3>
+            <ul>
+                <li>Wazuh rule <strong>40111</strong> triggered on repeated connection attempts from a single source IP.</li>
+                <li>High volume of SYN packets observed across multiple TCP ports in under 60 seconds.</li>
+                <li>Source IP <strong>192.168.100.10</strong> flagged for sequential port enumeration against <strong>192.168.100.20</strong>.</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Incident Timeline</h3>
+            <ul>
+                <li><strong>10:00</strong> — Attacker initiates <code>nmap</code> scan from Kali (192.168.100.10) against Metasploitable 2 (192.168.100.20).</li>
+                <li><strong>10:00–10:01</strong> — 23 TCP ports identified as open on 192.168.100.20.</li>
+                <li><strong>10:01</strong> — Service version detection reveals <code>vsftpd 2.3.4</code>, <code>OpenSSH 4.7p1</code>, and Java RMI on port 1099.</li>
+                <li><strong>10:01</strong> — OS fingerprinting identifies Linux 2.6.24 kernel (Ubuntu 8.04, end-of-life since 2013).</li>
+                <li><strong>10:02</strong> — Wazuh correlates the scan pattern and generates an alert for reconnaissance activity.</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Command Used</h3>
+            <pre><code>sudo nmap -sV -sC -O 192.168.100.20 -oN scan_results.txt</code></pre>
+        </div>
+
+        <div class="writeup-section">
+            <h3>nmap Flags Explained</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Flag</th>
+                        <th>Function</th>
+                        <th>Attacker Rationale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>-sV</code></td>
+                        <td>Enables service version detection on discovered open ports.</td>
+                        <td>Identifies exact service versions (e.g., <code>vsftpd 2.3.4</code>, <code>OpenSSH 4.7p1</code>) that can be mapped directly to known CVEs.</td>
+                    </tr>
+                    <tr>
+                        <td><code>-sC</code></td>
+                        <td>Runs nmap's default script set against discovered services.</td>
+                        <td>Performs lightweight, automated enumeration (e.g., anonymous FTP, SSL support, SMB security posture) without writing custom scripts.</td>
+                    </tr>
+                    <tr>
+                        <td><code>-O</code></td>
+                        <td>Attempts OS detection via TCP/IP fingerprinting.</td>
+                        <td>Confirms the underlying operating system and kernel family; outdated OS signatures often imply missing security updates.</td>
+                    </tr>
+                    <tr>
+                        <td><code>-oN scan_results.txt</code></td>
+                        <td>Outputs results in normal format to a file.</td>
+                        <td>Preserves a snapshot of reconnaissance data to drive later exploitation and reporting.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="writeup-section">
+            <h3>MITRE ATT&amp;CK Mapping</h3>
+            <ul>
+                <li><strong>Tactic:</strong> TA0043 Reconnaissance</li>
+                <li><strong>Technique:</strong> T1046 Network Service Discovery</li>
+                <li><strong>Tool:</strong> nmap</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Key Findings</h3>
+            <ul>
+                <li>Port <strong>21/tcp</strong> — <code>vsftpd 2.3.4</code> with known backdoor and anonymous FTP enabled.</li>
+                <li>Port <strong>22/tcp</strong> — <code>OpenSSH 4.7p1</code> (2008-era SSH daemon) supporting deprecated cryptography.</li>
+                <li>Port <strong>1099/tcp</strong> — Java RMI registry exposed, later exploited via deserialization for remote code execution.</li>
+                <li>Port <strong>1524/tcp</strong> — unauthenticated root bindshell, providing direct root access without any exploit.</li>
+                <li>Port <strong>3306/tcp</strong> — MySQL database listening on all interfaces with no network-layer restrictions.</li>
+                <li>Port <strong>5432/tcp</strong> — PostgreSQL database similarly exposed to the network.</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Analysis</h3>
+            <p>The reconnaissance scan completed in under two minutes and identified 23 open TCP ports on Metasploitable 2. OS fingerprinting confirmed a Linux 2.6.24 kernel (Ubuntu 8.04) that has been out of support since 2013, strongly implying the absence of security patches for over a decade. Multiple unauthenticated and legacy services are exposed directly to the network, including anonymous FTP, Telnet, and a pre-configured root bindshell. The presence of Java RMI on port 1099 and an unauthenticated shell on 1524 provides the attacker with several high-probability initial access paths requiring minimal effort.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Impact</h3>
+            <p>The attacker was able to map the complete external attack surface of the victim host in a single scan. Within approximately two minutes, sufficient intelligence was gathered to chain multiple critical exploits: Java RMI deserialization, direct root bindshell connection, database compromise, and brute-force attacks against exposed services. Although the scan itself does not alter system state, it dramatically reduces attacker uncertainty and directly enables rapid progression to credential access, remote code execution, and data exfiltration.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Mitigation &amp; Recommendations</h3>
+            <ul>
+                <li>Implement network segmentation and tightly control which hosts are permitted to initiate connections to critical servers.</li>
+                <li>Deploy IDS/IPS signatures that detect sequential port scanning and anomalous connection patterns.</li>
+                <li>Close or firewall all non-essential ports, exposing only services that are strictly required for business operations.</li>
+                <li>Replace the end-of-life operating system with a supported distribution and maintain a regular patching cadence.</li>
+                <li>Disable unauthenticated and legacy services such as Telnet, anonymous FTP, and the Metasploitable bindshell.</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Lessons Learned</h3>
+            <p>Early detection of reconnaissance activity is critical; once an attacker has a complete map of exposed services, the cost of defense increases significantly. Even in controlled lab environments, running end-of-life operating systems with numerous exposed services demonstrates how quickly a motivated adversary can identify multiple viable entry points. Production environments should treat unexplained port scanning as a high-priority incident and pair detection with aggressive hardening of exposed services.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Appendix</h3>
+            <p>Representative screenshots are referenced below for documentation and training purposes.</p>
+            <!-- SCREENSHOT: nmap terminal output -->
+            <!-- SCREENSHOT: Wazuh alert panel -->
+        </div>
+
+        <nav class="writeup-nav">
+            <span><a href="../index.html">← Back to Portfolio Home</a></span>
+            <a href="writeup-2-bruteforce.html">Next: Credential Access via SSH Brute Force →</a>
+        </nav>
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        <a href="https://github.com/jellybeansontoasties" target="_blank">GitHub</a>
+        &nbsp;|&nbsp;
+        built on arch btw
+      </p>
+    </footer>
+
+    <script>
+(function() {
+  const lines = [
+    'Incident Report #1',
+    'nmap Network Reconnaissance'
+  ];
+  const line1El = document.getElementById('line1');
+  const line2El = document.getElementById('line2');
+  const cursor = document.getElementById('typewriter-cursor');
+  const charDelay = 30;
+  const linePause = 750;
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function typeLine(text, el) {
+    const parent = el.parentNode;
+    parent.appendChild(cursor);
+    cursor.style.visibility = 'visible';
+
+    for (let i = 0; i <= text.length; i++) {
+      el.textContent = text.slice(0, i);
+      await sleep(charDelay);
+    }
+    await sleep(linePause);
+  }
+
+  (async function run() {
+    await typeLine(lines[0], line1El);
+    await typeLine(lines[1], line2El);
+  })();
+})();
+    </script>
+</body>
+</html>
+

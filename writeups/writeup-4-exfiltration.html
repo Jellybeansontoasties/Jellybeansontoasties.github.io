@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SOC incident report documenting credential dumping via /etc/shadow exfiltration from a Meterpreter session on Metasploitable 2.">
+    <title>Credential Dumping via /etc/shadow Exfiltration | jellybeansontoasties Home Lab</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="../index.html">Home</a></li>
+            <li><a href="../about.html">About</a></li>
+            <li><a href="../lab-setup.html">Lab Setup</a></li>
+            <li><a href="writeup-1-reconnaissance.html">Incident Reports</a></li>
+            <li><a href="https://github.com/Jellybeansontoasties">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <header class="hero-typewriter">
+        <h1><span id="line1"></span><span class="typewriter-cursor" id="typewriter-cursor">█</span></h1>
+        <p class="tagline"><span id="line2"></span></p>
+    </header>
+
+    <main>
+        <h1>Credential Dumping via /etc/shadow Exfiltration</h1>
+        <p class="tagline">Incident response report — dumping and exfiltrating /etc/shadow from a root Meterpreter session on Metasploitable 2.</p>
+
+        <div class="writeup-section">
+            <h3>Environment</h3>
+            <ul>
+                <li><strong>Attacker:</strong> Kali Linux, 192.168.100.10</li>
+                <li><strong>Victim:</strong> Metasploitable 2, 192.168.100.20</li>
+                <li><strong>SIEM:</strong> Wazuh 4.7.5 (Docker), 192.168.100.50</li>
+                <li><strong>Network:</strong> Isolated KVM bridge <code>virbr1</code>, 192.168.100.0/24</li>
+                <li><strong>Host:</strong> Arch Linux, i7-13700HX, 15GB RAM, RTX 4060</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Incident Metadata</h3>
+            <ul>
+                <li><strong>Incident Title:</strong> Credential Dumping via /etc/shadow Exfiltration</li>
+                <li><strong>Date:</strong> February 22, 2026</li>
+                <li><strong>Severity:</strong> Critical</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Detection Method</h3>
+            <ul>
+                <li>Wazuh flagged read access to <code>/etc/shadow</code> originating from a process not associated with the standard authentication stack.</li>
+                <li>File integrity monitoring raised a high-severity alert on sensitive file access outside of expected patterns.</li>
+                <li>A Meterpreter session was identified as an anomalous in-memory process with network connectivity to the attacker host.</li>
+                <li>Outbound data transfer from <strong>192.168.100.20</strong> to <strong>192.168.100.10</strong> was logged during and immediately after the <code>cat /etc/shadow</code> execution.</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Incident Timeline</h3>
+            <ul>
+                <li><strong>10:11</strong> — Meterpreter session confirmed running as root via <code>getuid</code>.</li>
+                <li><strong>10:11</strong> — Attacker drops to native shell using the Meterpreter <code>shell</code> command.</li>
+                <li><strong>10:11</strong> — <code>id</code> confirms <code>uid=0(root)</code>, <code>gid=0(root)</code>.</li>
+                <li><strong>10:11</strong> — <code>uname -a</code> reveals Linux 2.6.24 kernel from 2008 — approximately 18 years unpatched.</li>
+                <li><strong>10:11:30</strong> — <code>cat /etc/shadow</code> executed; all password hashes read into the session.</li>
+                <li><strong>10:12</strong> — Shadow file contents transferred to the attacker machine for offline cracking.</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Commands Used</h3>
+            <pre><code>getuid        # Server username: root
+shell
+id
+whoami
+uname -a
+cat /etc/shadow</code></pre>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Data Exfiltrated</h3>
+            <p>The full contents of <code>/etc/shadow</code> were exfiltrated, including MD5-hashed (<code>$1$</code>) password entries for:</p>
+            <ul>
+                <li><strong>root</strong> — primary superuser account for the system.</li>
+                <li><strong>msfadmin</strong> — non-root user previously compromised via SSH brute force.</li>
+                <li><strong>postgres</strong> — database service account.</li>
+                <li>Additional system and service identities (for example, <code>sys</code>, <code>klog</code>, <code>user</code>, <code>service</code>).</li>
+            </ul>
+            <p>All hashes use the MD5-based <code>$1$</code> scheme, which is considered cryptographically weak and easily attacked with modern GPU hardware.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>MITRE ATT&amp;CK Mapping</h3>
+            <ul>
+                <li><strong>Tactics:</strong> TA0006 Credential Access, TA0010 Exfiltration</li>
+                <li><strong>Technique:</strong> T1003.008 OS Credential Dumping — <code>/etc/shadow</code></li>
+                <li><strong>Tools:</strong> Meterpreter, native Linux shell utilities</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Analysis</h3>
+            <p>Because the Java RMI service was running as <code>root</code>, the attacker’s Meterpreter session inherited full system privileges from the moment of exploitation. No privilege escalation step was necessary; the post-exploitation phase immediately focused on credential theft. Reading <code>/etc/shadow</code> is sufficient to compromise not just the current host, but any other systems that reuse these credentials. MD5-hashed passwords, especially when combined with weak or reused values, can typically be cracked rapidly with tools like hashcat and modern GPUs. Offline cracking means that once exfiltration has occurred, the defender’s window of opportunity to prevent further password disclosure effectively closes.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Impact</h3>
+            <p>Exfiltration of the complete shadow file constitutes a total compromise of local account credentials. With sufficient cracking resources, the attacker can recover clear-text passwords for root, service accounts, and user identities, then reuse them across the environment for lateral movement. Even if network access is later removed, the attacker retains all necessary material to continue offline attacks and to exploit any other systems that share the same credential patterns.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Mitigation &amp; Recommendations</h3>
+            <ul>
+                <li>Migrate from MD5 (<code>$1$</code>) password hashing to at least SHA-512 (<code>$6$</code>), preferably bcrypt or an even stronger key-derivation function.</li>
+                <li>Ensure that no externally exposed service runs as <code>root</code>; enforce least privilege and separate duties across dedicated service accounts.</li>
+                <li>Enable file integrity monitoring on <code>/etc/shadow</code>, <code>/etc/passwd</code>, and other sensitive files, and treat any unexpected access as a high-severity incident.</li>
+                <li>Monitor and alert on processes that access <code>/etc/shadow</code> outside of the expected authentication pipeline, including via interpreter shells.</li>
+                <li>After any suspected credential dumping, assume all local credentials are compromised and rotate them immediately, including service accounts.</li>
+                <li>Implement privileged access management (PAM) controls to reduce direct use of shared administrator accounts and to improve auditability.</li>
+            </ul>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Lessons Learned</h3>
+            <p>Credential stores such as <code>/etc/shadow</code> are some of the highest-value assets on any Unix-like system and must be monitored accordingly. This exercise demonstrates how quickly an attacker with root access can move from code execution to full credential compromise with only a handful of commands. Defenders should combine strong cryptography, strict access controls, and real-time monitoring to ensure that any unauthorized access to credential databases is detected and contained immediately.</p>
+        </div>
+
+        <div class="writeup-section">
+            <h3>Appendix</h3>
+            <p>Evidence artifacts should be retained for future reference and defensive tuning.</p>
+            <!-- SCREENSHOT: Terminal output showing /etc/shadow dump from Meterpreter shell -->
+            <!-- SCREENSHOT: Wazuh FIM alert indicating access to /etc/shadow -->
+        </div>
+
+        <nav class="writeup-nav">
+            <a href="writeup-3-exploitation.html">← Previous: Initial Access via Java RMI Deserialization Exploit</a>
+            <a href="../index.html">Back to Portfolio Home →</a>
+        </nav>
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        <a href="https://github.com/jellybeansontoasties" target="_blank">GitHub</a>
+        &nbsp;|&nbsp;
+        built on arch btw
+      </p>
+    </footer>
+
+    <script>
+(function() {
+  const lines = [
+    'Incident Report #4',
+    'Root Access and Credential Exfiltration'
+  ];
+  const line1El = document.getElementById('line1');
+  const line2El = document.getElementById('line2');
+  const cursor = document.getElementById('typewriter-cursor');
+  const charDelay = 30;
+  const linePause = 750;
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function typeLine(text, el) {
+    const parent = el.parentNode;
+    parent.appendChild(cursor);
+    cursor.style.visibility = 'visible';
+
+    for (let i = 0; i <= text.length; i++) {
+      el.textContent = text.slice(0, i);
+      await sleep(charDelay);
+    }
+    await sleep(linePause);
+  }
+
+  (async function run() {
+    await typeLine(lines[0], line1El);
+    await typeLine(lines[1], line2El);
+  })();
+})();
+    </script>
+</body>
+</html>
+
