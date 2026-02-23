@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Network scanning writeup: nmap reconnaissance against Metasploitable 2, Wazuh Rule 40101 detection, and defender takeaways.">
-    <title>Network Scanning with nmap | jellybeansontoasties Home Lab</title>
+    <meta name="description" content="nmap network reconnaissance against Metasploitable2 revealing 23 open ports, vulnerable services, Wazuh detection, and hardening recommendations.">
+    <title>nmap Network Reconnaissance | jellybeansontoasties Home Lab</title>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
@@ -19,163 +19,109 @@
     </nav>
 
     <main>
-        <h1>Network Scanning with nmap</h1>
-        <p class="tagline">Reconnaissance scan against Metasploitable 2 (192.168.100.20) from Kali (192.168.100.10)</p>
+        <h1>nmap Network Reconnaissance</h1>
+        <p class="tagline">Full service and OS detection scan against Metasploitable2 (192.168.100.20) from Kali (192.168.100.10)</p>
 
         <div class="writeup-section">
-            <h3>Objective</h3>
-            <p>Perform reconnaissance against the victim host to identify open ports, running services, and operating system information. The goal is to build a map of attack surface before attempting exploitation.</p>
+            <h3>Summary</h3>
+            <p>From the Kali attacker VM at 192.168.100.10, a full nmap service version and OS detection scan was run against the Metasploitable2 target at 192.168.100.20 on an isolated KVM homelab network. The scan completed in roughly half a minute and identified 23 open TCP ports exposing a wide attack surface of outdated, misconfigured, and intentionally vulnerable services.</p>
+            <ul>
+                <li>Multiple remote access services exposed, including FTP, SSH, Telnet, rsh/rlogin, VNC, and X11.</li>
+                <li>Legacy application protocols and weak cryptography such as SSLv2 on SMTP and ancient OpenSSH.</li>
+                <li>Directly exposed databases (MySQL on 3306 and PostgreSQL on 5432) with no apparent network firewalling.</li>
+                <li>Dangerous services like a root bindshell on 1524/tcp and Java RMI on 1099/tcp running without authentication.</li>
+            </ul>
         </div>
 
         <div class="writeup-section">
-            <h3>Tools used</h3>
-            <p>nmap</p>
+            <h3>Attack Technique Used</h3>
+            <p>The attack technique here is classic network reconnaissance using <code>nmap</code> with service version detection (<code>-sV</code>), default script scanning (<code>-sC</code>), and OS fingerprinting (<code>-O</code>). This is the first phase of nearly every penetration test: systematically mapping reachable ports, identifying running services and versions, and inferring the underlying operating system in order to prioritize exploitation paths.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Command used</h3>
-            <pre><code>nmap -sV -sC -O 192.168.100.20 -oN scan_results.txt</code></pre>
+            <h3>Steps to Reproduce</h3>
+            <p><strong>Terminal:</strong> Kali SSH (<code>ssh owokali@192.168.100.10</code>)</p>
+            <pre><code>sudo nmap -sV -sC -O 192.168.100.20 -oN scan_results.txt
+cat scan_results.txt</code></pre>
+
+            <p><strong>Complete findings from scan:</strong></p>
+            <ul>
+                <li><strong>Port 21/tcp:</strong> vsftpd 2.3.4 — anonymous FTP login allowed (FTP code 230), plaintext data connections, CVE-2011-2523 backdoor present.</li>
+                <li><strong>Port 22/tcp:</strong> OpenSSH 4.7p1 Debian 8ubuntu1 — very old SSH daemon from 2008, only supports deprecated key algorithms.</li>
+                <li><strong>Port 23/tcp:</strong> Linux telnetd — unencrypted remote access, all credentials and data sent in plaintext.</li>
+                <li><strong>Port 25/tcp:</strong> Postfix smtpd — SSLv2 supported (broken cryptography, DROWN-vulnerable), certificate expired April 2010.</li>
+                <li><strong>Port 53/tcp:</strong> ISC BIND 9.4.2 — outdated DNS server.</li>
+                <li><strong>Port 80/tcp:</strong> Apache httpd 2.2.8 — legacy web server with multiple known CVEs.</li>
+                <li><strong>Port 111/tcp:</strong> rpcbind — exposes NFS-related RPC services.</li>
+                <li><strong>Ports 139/tcp and 445/tcp:</strong> Samba 3.0.20 — SMB signing disabled, enabling relay-style attacks.</li>
+                <li><strong>Port 512/tcp:</strong> netkit-rsh rexecd — legacy remote execution service, no encryption.</li>
+                <li><strong>Port 513/tcp:</strong> rlogin — unencrypted remote login.</li>
+                <li><strong>Port 514/tcp:</strong> Netkit rshd — remote shell with no authentication or encryption.</li>
+                <li><strong>Port 1099/tcp:</strong> Java RMI GNU Classpath grmiregistry — unauthenticated Java RMI registry, later used for remote code execution.</li>
+                <li><strong>Port 1524/tcp:</strong> Metasploitable bindshell — preconfigured, unauthenticated root shell listener.</li>
+                <li><strong>Port 2049/tcp:</strong> NFS v2–v4 — network file system exposed directly.</li>
+                <li><strong>Port 2121/tcp:</strong> ProFTPD 1.3.1 — second FTP server instance.</li>
+                <li><strong>Port 3306/tcp:</strong> MySQL 5.0.51a — database exposed to the network with no firewall controls.</li>
+                <li><strong>Port 5432/tcp:</strong> PostgreSQL 8.3.0 — another database exposed directly to the network.</li>
+                <li><strong>Port 5900/tcp:</strong> VNC protocol 3.3 — remote desktop protocol exposed.</li>
+                <li><strong>Port 6000/tcp:</strong> X11 — display server exposed.</li>
+                <li><strong>Port 6667/tcp:</strong> UnrealIRCd — IRC server that is also known to ship with a backdoor in some versions.</li>
+                <li><strong>Port 8009/tcp:</strong> Apache JServ AJP — Java application server connector.</li>
+                <li><strong>Port 8180/tcp:</strong> Apache Tomcat 5.5 — Java web application server.</li>
+                <li><strong>OS detected:</strong> Linux kernel 2.6.9–2.6.33, roughly 2008-era; <strong>SMB security:</strong> message signing disabled (dangerous but default for this lab).</li>
+            </ul>
         </div>
 
         <div class="writeup-section">
-            <h3>Expected output</h3>
-            <div class="screenshot-placeholder">Screenshot: nmap scan output (ports, versions, OS guess)</div>
-            <p>Here is the output of the nmap scan:</p>
-            <pre><code>
-            owokali@owokali:~$ sudo nmap -sV -sC -O 192.168.100.20 -oN scan_results.txt
-            [sudo] password for owokali: 
-            Starting Nmap 7.98 ( https://nmap.org ) at 2026-02-22 20:44 +0800
-            mass_dns: warning: Unable to determine any DNS servers. Reverse DNS is disabled. Try using --system-dns or specify valid servers with --dns-servers
-            Nmap scan report for 192.168.100.20
-            Host is up (0.00072s latency).
-            Not shown: 977 closed tcp ports (reset)
-            PORT     STATE SERVICE     VERSION
-            21/tcp   open  ftp         vsftpd 2.3.4
-            |_ftp-anon: Anonymous FTP login allowed (FTP code 230)
-            | ftp-syst: 
-            |   STAT: 
-            | FTP server status:
-            |      Connected to 192.168.100.10
-            |      Logged in as ftp
-            |      TYPE: ASCII
-            |      No session bandwidth limit
-            |      Session timeout in seconds is 300
-            |      Control connection is plain text
-            |      Data connections will be plain text
-            |      vsFTPd 2.3.4 - secure, fast, stable
-            |_End of status
-            22/tcp   open  ssh         OpenSSH 4.7p1 Debian 8ubuntu1 (protocol 2.0)
-            | ssh-hostkey: 
-            |   1024 60:0f:cf:e1:c0:5f:6a:74:d6:90:24:fa:c4:d5:6c:cd (DSA)
-            |_  2048 56:56:24:0f:21:1d:de:a7:2b:ae:61:b1:24:3d:e8:f3 (RSA)
-            23/tcp   open  telnet      Linux telnetd
-            25/tcp   open  smtp        Postfix smtpd
-            |_smtp-commands: metasploitable.localdomain, PIPELINING, SIZE 10240000, VRFY, ETRN, STARTTLS, ENHANCEDSTATUSCODES, 8BITMIME, DSN
-            | ssl-cert: Subject: commonName=ubuntu804-base.localdomain/organizationName=OCOSA/stateOrProvinceName=There is no such thing outside US/countryName=XX
-            | Not valid before: 2010-03-17T14:07:45
-            |_Not valid after:  2010-04-16T14:07:45
-            | sslv2: 
-            |   SSLv2 supported
-            |   ciphers: 
-            |     SSL2_RC4_128_EXPORT40_WITH_MD5
-            |     SSL2_RC2_128_CBC_EXPORT40_WITH_MD5
-            |     SSL2_RC4_128_WITH_MD5
-            |     SSL2_DES_64_CBC_WITH_MD5
-            |     SSL2_DES_192_EDE3_CBC_WITH_MD5
-            |_    SSL2_RC2_128_CBC_WITH_MD5
-            |_ssl-date: 2026-02-22T12:45:06+00:00; -1s from scanner time.
-            53/tcp   open  domain      ISC BIND 9.4.2
-            | dns-nsid: 
-            |_  bind.version: 9.4.2
-            80/tcp   open  http        Apache httpd 2.2.8 ((Ubuntu) DAV/2)
-            |_http-server-header: Apache/2.2.8 (Ubuntu) DAV/2
-            |_http-title: Metasploitable2 - Linux
-            111/tcp  open  rpcbind     2 (RPC #100000)
-            |_rpcinfo: ERROR: Script execution failed (use -d to debug)
-            139/tcp  open  netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
-            445/tcp  open  netbios-ssn Samba smbd 3.0.20-Debian (workgroup: WORKGROUP)
-            512/tcp  open  exec        netkit-rsh rexecd
-            513/tcp  open  login       OpenBSD or Solaris rlogind
-            514/tcp  open  shell       Netkit rshd
-            1099/tcp open  java-rmi    GNU Classpath grmiregistry
-            1524/tcp open  bindshell   Metasploitable root shell
-            2049/tcp open  nfs         2-4 (RPC #100003)
-            2121/tcp open  ftp         ProFTPD 1.3.1
-            3306/tcp open  mysql       MySQL 5.0.51a-3ubuntu5
-            | mysql-info: 
-            |   Protocol: 10
-            |   Version: 5.0.51a-3ubuntu5
-            |   Thread ID: 8
-            |   Capabilities flags: 43564
-            |   Some Capabilities: Support41Auth, SupportsTransactions, SwitchToSSLAfterHandshake, Speaks41ProtocolNew, ConnectWithDatabase, SupportsCompression, LongColumnFlag
-            |   Status: Autocommit
-            |_  Salt: M.>/m[]CvKP1C<E$"{hz
-            5432/tcp open  postgresql  PostgreSQL DB 8.3.0 - 8.3.7
-            |_ssl-date: 2026-02-22T12:45:06+00:00; -1s from scanner time.
-            | ssl-cert: Subject: commonName=ubuntu804-base.localdomain/organizationName=OCOSA/stateOrProvinceName=There is no such thing outside US/countryName=XX
-            | Not valid before: 2010-03-17T14:07:45
-            |_Not valid after:  2010-04-16T14:07:45
-            5900/tcp open  vnc         VNC (protocol 3.3)
-            | vnc-info: 
-            |   Protocol version: 3.3
-            |   Security types: 
-            |_    VNC Authentication (2)
-            6000/tcp open  X11         (access denied)
-            6667/tcp open  irc         UnrealIRCd
-            8009/tcp open  ajp13       Apache Jserv (Protocol v1.3)
-            |_ajp-methods: Failed to get a valid response for the OPTION request
-            8180/tcp open  http        Apache Tomcat/Coyote JSP engine 1.1
-            |_http-favicon: Apache Tomcat
-            |_http-server-header: Apache-Coyote/1.1
-            |_http-title: Apache Tomcat/5.5
-            MAC Address: 52:54:00:8A:94:92 (QEMU virtual NIC)
-            Device type: general purpose
-            Running: Linux 2.6.X
-            OS CPE: cpe:/o:linux:linux_kernel:2.6
-            OS details: Linux 2.6.9 - 2.6.33
-            Network Distance: 1 hop
-            Service Info: Hosts:  metasploitable.localdomain, irc.Metasploitable.LAN; OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
-
-            Host script results:
-            | smb-os-discovery: 
-            |   OS: Unix (Samba 3.0.20-Debian)
-            |   Computer name: metasploitable
-            |   NetBIOS computer name: 
-            |   Domain name: localdomain
-            |   FQDN: metasploitable.localdomain
-            |_  System time: 2026-02-22T07:44:58-05:00
-            |_nbstat: NetBIOS name: METASPLOITABLE, NetBIOS user: <unknown>, NetBIOS MAC: <unknown> (unknown)
-            |_clock-skew: mean: 1h14m59s, deviation: 2h30m00s, median: -1s
-            | smb-security-mode: 
-            |   account_used: guest
-            |   authentication_level: user
-            |   challenge_response: supported
-            |_  message_signing: disabled (dangerous, but default)
-            |_smb2-time: Protocol negotiation failed (SMB2)
-
-            OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
-            Nmap done: 1 IP address (1 host up) scanned in 21.92 seconds
-            </code></pre>
+            <h3>Detection (Wazuh)</h3>
+            <p>Network scanning generates a large volume of short-lived connection attempts across many ports in a very small time window. In a monitored environment, Wazuh can flag this behavior: rule 5712 (or equivalent) triggers on repeated connection attempts and clear port-scanning patterns. In this lab the Kali host at 192.168.100.10 connected to every port on 192.168.100.20 within approximately 34 seconds, which is a textbook nmap scan signature that would also be visible to a network IDS such as Snort or Suricata.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Findings</h3>
-            <p>Open ports and services discovered (placeholder): multiple services including FTP, SSH, Telnet, HTTP, Samba, and others. Version detection and default scripts reveal software versions and potential misconfigurations. OS detection suggests the target is Linux. These findings inform which attack vectors to try next.</p>
+            <h3>Remediation</h3>
+            <ul>
+                <li>Disable or remove all unused services — the initial attack surface was 23 open ports; hardened internet-facing systems should typically expose only a small handful of required services.</li>
+                <li>Place databases (MySQL on 3306 and PostgreSQL on 5432) behind network firewalls or on internal-only VLANs; databases should never be directly reachable from untrusted networks.</li>
+                <li>Replace Telnet, rlogin, and rsh with SSH everywhere to eliminate plaintext remote-access protocols.</li>
+                <li>Apply current security patches to the operating system and all services; the 2.6.x kernel and software versions from 2008 have hundreds of publicly documented vulnerabilities.</li>
+                <li>Implement network segmentation so critical assets (databases, domain controllers, SIEM infrastructure) reside on separate VLANs from exposed services.</li>
+                <li>Disable anonymous FTP access and review all FTP usage; prefer SFTP or other encrypted file transfer mechanisms.</li>
+                <li>Retire SSLv2 and other obsolete cryptographic protocols; enforce TLS 1.2+ with modern cipher suites.</li>
+            </ul>
         </div>
 
         <div class="writeup-section">
-            <h3>Wazuh Alert</h3>
-            <p><strong>Rule 40101</strong> — Network scan detected. The SIEM detected the reconnaissance activity from the Kali host (192.168.100.10) targeting the victim. This rule fires on port-scanning behavior and helps blue teams identify pre-attack enumeration.</p>
+            <h3>MITRE ATT&amp;CK Mapping</h3>
+            <p>TA0043 Reconnaissance, T1046 Network Service Discovery, T1595 Active Scanning.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Defender Takeaway</h3>
-            <p>Treat scan detection as a high-priority signal: reconnaissance often precedes exploitation. Correlate with other events (e.g., follow-up connection attempts). Reduce exposure by disabling unnecessary services and keeping only required ports open. Use network segmentation so critical assets are not in the same segment as internet-facing or lab systems.</p>
+            <h3>Screenshots with captions</h3>
+            <figure>
+                <img src="../assets/images/nmap.png" alt="Full nmap scan output showing 23 open ports on Metasploitable2">
+                <figcaption>Full nmap scan output showing 23 open ports on Metasploitable2.</figcaption>
+            </figure>
+            <figure>
+                <img src="../assets/images/port_21.png" alt="nmap service detection on port 21 showing vsftpd 2.3.4 with anonymous FTP login allowed">
+                <figcaption>Port 21 vsftpd 2.3.4 with anonymous FTP login allowed.</figcaption>
+            </figure>
+            <figure>
+                <img src="../assets/images/port_23.png" alt="nmap output on port 23 showing Linux telnetd running an unencrypted remote access service">
+                <figcaption>Port 23 Telnet — unencrypted remote access protocol.</figcaption>
+            </figure>
+            <figure>
+                <img src="../assets/images/port_1534-1099.png" alt="nmap output for ports 1099 and 1524 showing Java RMI registry and Metasploitable root bindshell">
+                <figcaption>Port 1099 Java RMI and Port 1524 open root bindshell.</figcaption>
+            </figure>
+            <figure>
+                <img src="../assets/images/port_3306_and_5432.png" alt="nmap output for ports 3306 and 5432 showing MySQL and PostgreSQL databases exposed to the network">
+                <figcaption>Ports 3306 MySQL and 5432 PostgreSQL exposed directly to network.</figcaption>
+            </figure>
         </div>
 
         <nav class="writeup-nav">
             <span></span>
-            <a href="writeup-02.html">Next: SSH Brute Force with Hydra →</a>
+            <a href="writeup-02.html">Next: Hydra Credential Brute Force →</a>
         </nav>
     </main>
 

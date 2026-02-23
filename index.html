@@ -33,8 +33,15 @@
             <h2>projects</h2>
             <div class="projects">
                 <div class="project-card">
-                    <h3>SIEM Home Lab</h3>
-                    <p>KVM/QEMU home lab running Kali, Metasploitable 2, and Ubuntu VMs. Attacker/victim setup with a SIEM layer for log aggregation and alerting.</p>
+                    <h3>SIEM Home Lab &amp; Penetration Testing Lab</h3>
+                    <p>Isolated 3-VM cybersecurity lab on Arch Linux using KVM/QEMU and Docker, focused on end-to-end attack chains and SIEM detection.</p>
+                    <ul>
+                        <li>Built isolated 3-VM lab with Kali, Metasploitable 2, and Ubuntu SIEM host using KVM/QEMU on Arch Linux.</li>
+                        <li>Executed full attack chain: nmap reconnaissance, Hydra credential brute force, Metasploit Java RMI remote code execution, and credential exfiltration.</li>
+                        <li>Deployed Wazuh SIEM with custom detection rules mapped to the MITRE ATT&amp;CK framework.</li>
+                        <li>Automated lab startup with bash scripting and DHCP MAC reservations for consistent IP addressing.</li>
+                        <li>Documented each attack as a professional incident-style writeup on this portfolio site.</li>
+                    </ul>
                     <div class="tags">
                         <span class="tag">[kvm]</span>
                         <span class="tag">[kali]</span>

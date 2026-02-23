@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Privilege escalation writeup on Metasploitable: from msfadmin to root, Wazuh Rule 5902, defender takeaways.">
-    <title>Privilege Escalation on Metasploitable | jellybeansontoasties Home Lab</title>
+    <meta name="description" content="Post-exploitation on Metasploitable2: root access via Meterpreter, /etc/shadow credential exfiltration, Wazuh FIM detection, and hardening guidance.">
+    <title>Root Access and Credential Exfiltration | jellybeansontoasties Home Lab</title>
     <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
@@ -19,51 +19,85 @@
     </nav>
 
     <main>
-        <h1>Privilege Escalation on Metasploitable</h1>
-        <p class="tagline">Escalate from msfadmin to root after gaining initial shell access</p>
+        <h1>Root Access and Credential Exfiltration</h1>
+        <p class="tagline">Post-exploitation from Meterpreter to full root control and /etc/shadow dump on Metasploitable2</p>
 
         <div class="writeup-section">
-            <h3>Objective</h3>
-            <p>After obtaining a low-privilege shell (e.g. msfadmin), escalate to root using local enumeration (SUID binaries, kernel exploits, misconfigurations). This demonstrates why principle of least privilege and hardening matter even after initial compromise.</p>
+            <h3>Summary</h3>
+            <p>This stage continues directly from the Meterpreter session established in the Java RMI attack. The session was already running as root, meaning no additional privilege escalation was required — a direct violation of the principle of least privilege. From Meterpreter, the attack dropped into a native bash shell, confirmed <code>uid=0(root)</code>, and exfiltrated <code>/etc/shadow</code>, which contained MD5-hashed passwords for 30+ system accounts. At this point the system was fully compromised: all data, all users, and all services are under attacker control.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Tools used</h3>
-            <p>Metasploit post modules (e.g. local_exploit_suggester), manual enumeration (find, etc.)</p>
+            <h3>Attack Technique Used</h3>
+            <p>The technique is post-exploitation using Meterpreter. After confirming the session context with <code>getuid</code>, the attacker used the <code>shell</code> command to obtain an interactive system shell on Metasploitable. From that shell, standard Linux utilities were used to confirm privileges and exfiltrate sensitive credential data. The key actions were reading <code>/etc/shadow</code> to obtain password hashes for offline cracking and collecting basic system information (<code>uname -a</code>) to understand kernel age and exploitability.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Approach</h3>
+            <h3>Steps to Reproduce</h3>
+            <p><strong>Starting point:</strong> An active Meterpreter session from the Java RMI exploit (Attack 3).</p>
+            <pre><code>meterpreter &gt; getuid
+Server username: root
+
+meterpreter &gt; shell
+$ id
+uid=0(root) gid=0(root) groups=0(root)
+$ whoami
+root
+$ cat /etc/shadow
+$ uname -a</code></pre>
+
+            <p><strong>Complete findings:</strong></p>
             <ul>
-                <li>Run the <code>local_exploit_suggester</code> post module from Metasploit to get suggested local exploits.</li>
-                <li>Enumerate SUID binaries: <code>find / -perm -4000 2>/dev/null</code></li>
-                <li>Exploit a vulnerable SUID binary or kernel weakness (e.g. documented CVE for the target OS) to obtain root shell.</li>
+                <li><code>getuid</code> reported <strong>Server username: root</strong> — no privilege escalation step was needed.</li>
+                <li><code>id</code> confirmed <strong>uid=0(root)</strong> and <strong>gid=0(root)</strong>, proving full root access.</li>
+                <li><code>whoami</code> returned <code>root</code>, further confirming effective privileges.</li>
+                <li><code>uname -a</code> showed <code>Linux metasploitable 2.6.24-16-server #1 SMP Thu Apr 10 13:58:00 UTC 2008 i686</code> — an ~18-year-old kernel with many public exploits.</li>
+                <li><code>/etc/shadow</code> was successfully dumped, exposing MD5 (<code>$1$</code>) password hashes for 30+ accounts, including:
+                    <ul>
+                        <li><code>root:$1$...</code> — root account protected with legacy MD5 hashing.</li>
+                        <li><code>sys:$1$...</code>, <code>klog:$1$...</code>, <code>postgres:$1$...</code>, <code>user:$1$...</code>, <code>service:$1$...</code> — additional system and service accounts.</li>
+                        <li><code>msfadmin:$1XN10Zj2c$Rt/zzCW3mLtUWA.ihZjA5/</code> — same account compromised via Hydra in Attack 2, now with its hash available for offline cracking.</li>
+                        <li>Accounts such as <code>wazuh</code> and <code>ossec</code> present, indicating security/monitoring components also have credential material on the host.</li>
+                    </ul>
+                </li>
+                <li>All MD5 (<code>$1$</code>) hashes are trivial to crack offline with tools like hashcat; the attacker can take the file away and recover passwords at leisure with no further contact with the victim.</li>
+                <li>With root-level shell access and credential material, the attacker has achieved complete system compromise and can pivot, maintain persistence, or tamper with logs at will.</li>
             </ul>
-            <pre><code>find / -perm -4000 2>/dev/null</code></pre>
         </div>
 
         <div class="writeup-section">
-            <h3>Expected output</h3>
-            <div class="screenshot-placeholder">Screenshot: root shell or id showing uid=0(root)</div>
+            <h3>Detection (Wazuh)</h3>
+            <p>On a modern, supported Linux distribution with a Wazuh agent installed, access to <code>/etc/shadow</code> is a high-severity event. Wazuh's file integrity monitoring (FIM) capability monitors sensitive files like <code>/etc/shadow</code> by default and would generate a critical alert when the file is read or modified. In this lab, Metasploitable's age (Ubuntu 8.04 from 2008) prevented agent deployment, but in a real environment an agent would log both the file access and any suspicious processes spawned from Meterpreter. Network monitoring would also observe the exfiltration of the shadow file contents leaving the system over the Meterpreter channel.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Findings</h3>
-            <p>Root shell obtained (placeholder): escalation was achieved via a vulnerable SUID binary or kernel exploit. Document the exact vector (e.g. binary name, CVE) and the command or module used. Full root access allows persistence, credential harvesting, and complete system control.</p>
+            <h3>Remediation</h3>
+            <ul>
+                <li>Never run exposed application services as root; always use dedicated, least-privilege service accounts to contain compromise.</li>
+                <li>Deploy file integrity monitoring on sensitive files such as <code>/etc/shadow</code>, <code>/etc/passwd</code>, and key configuration files, and ensure alerts are integrated into the SIEM.</li>
+                <li>Replace MD5 (<code>$1$</code>) password hashing with modern algorithms such as SHA-512 (<code>$6$</code>) or bcrypt (<code>$2b$</code>), and enforce strong password policies.</li>
+                <li>Deploy an endpoint detection and response (EDR) solution capable of detecting Meterpreter-style post-exploitation behaviors.</li>
+                <li>Implement network segmentation and strict access controls to limit lateral movement opportunities after an initial compromise.</li>
+                <li>Maintain a robust patch management program; an 18-year-old kernel dramatically increases the risk of both remote and local exploitation.</li>
+                <li>Ensure a Wazuh agent (or equivalent) is installed on all monitored systems to provide real-time visibility into processes, file access, and network activity.</li>
+            </ul>
         </div>
 
         <div class="writeup-section">
-            <h3>Wazuh Alert</h3>
-            <p><strong>Rule 5902</strong> — su/sudo by non-root user, or privilege change event. The SIEM detected a privilege escalation (e.g. su to root or execution of setuid binary resulting in root). This helps blue teams spot post-compromise escalation activity.</p>
+            <h3>MITRE ATT&amp;CK Mapping</h3>
+            <p>T1003.008 OS Credential Dumping: <code>/etc/passwd</code> and <code>/etc/shadow</code>, T1078 Valid Accounts, TA0006 Credential Access, TA0009 Collection, T1005 Data from Local System.</p>
         </div>
 
         <div class="writeup-section">
-            <h3>Defender Takeaway</h3>
-            <p>Apply principle of least privilege: limit sudo access and remove unnecessary SUID bits. Audit SUID binaries regularly (<code>find / -perm -4000</code>) and remove or replace risky ones. Harden sudoers and avoid NOPASSWD for sensitive commands. Monitor for su/sudo and privilege changes (e.g. Rule 5902) and correlate with initial access events. Keep systems patched to reduce kernel/local exploit options.</p>
+            <h3>Screenshots with captions</h3>
+            <figure>
+                <img src="../assets/images/meterpreter_session_exploit.png" alt="Meterpreter root shell on Metasploitable2 showing uid=0(root), /etc/shadow dump, and Linux 2.6.24 kernel from 2008">
+                <figcaption>Root shell confirmed — uid=0(root), full <code>/etc/shadow</code> dump showing MD5 hashed passwords for all 30+ system accounts, Linux kernel 2.6.24 from 2008.</figcaption>
+            </figure>
         </div>
 
         <nav class="writeup-nav">
-            <a href="writeup-03.html">← Previous: Reverse Shell Payload with msfvenom</a>
+            <a href="writeup-03.html">← Previous: Metasploit Java RMI Reverse Shell</a>
             <span></span>
         </nav>
     </main>
